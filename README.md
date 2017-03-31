@@ -19,13 +19,13 @@ To use (and not develop) `SLRealizer`, you can pip install it with
 pip install git+git://github.com/LSSTDESC/SLRealizer.git#egg=slrealizer
 ```
 
-To help develop it, fork and clone the repo, `cd` there, and then install the package with
+To help develop it, fork and clone the repo, `cd` to its `python` folder, and then install the package with
 ```
 python setup.py develop
 ```
 To run the tests, do
 ```
-nosetests <SLRealizer install directory>
+nosetests
 ```
 
 
