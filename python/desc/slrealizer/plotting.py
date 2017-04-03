@@ -43,14 +43,10 @@ def draw_model(currObs, currLens, convolved=False):
     PSF_HWHM = currObs[2]/scale_factor
 
     for i in range(4):
-        
-        print i
-        print currLens['MAG'][0]
-        print currLens['NIMG']
         #print "In 'draw_model', mag_ratio, quasar_alpha, lens_alpha =", \
         #    mag_ratio, quasar_alpha, lens_alpha
         lens_mag = currLens[filterLens]
-        quasar_mag = currLens[filterQuasar] + 2.5*np.log10(currLens['MAG'][0][i])
+        quasar_mag = currLens[filterQuasar] - 2.5*np.log10(currLens['MAG'][0][i])
         print 'Quasar Mag, Lens Mag'
         print quasar_mag, lens_mag
         
@@ -87,7 +83,7 @@ def draw_model(currObs, currLens, convolved=False):
         lens = plt.Circle((lensX, lensY),
                   radius=galaxy_HWHM,
                   alpha=lens_alpha,
-                  fc='black', linewidth=3)
+                  fc=circleColor, hatch = '/')
         print 'Lens Position X, Y', \
             lensX, lensY
         plt.gca().add_patch(lens)
