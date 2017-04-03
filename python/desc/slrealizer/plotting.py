@@ -5,6 +5,7 @@ import matplotlib
 import math
 import numpy as np
 np.set_printoptions(threshold='nan')
+from __future__ import print_function
 
 def draw_model(currObs, currLens, convolved=False):
     """
