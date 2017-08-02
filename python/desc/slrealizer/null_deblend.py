@@ -32,7 +32,7 @@ x_max = 5.0
 y_min = -5.0
 y_max = 5.0
 distance = 0.01
-
+area_multivariate = 10200 #9999.9610319184358
 number_of_rows = int((x_max - x_min)/distance)
 number_of_columns = int((y_max - y_min)/distance)
 #=======================================================================
@@ -57,8 +57,8 @@ def null_deblend(image2):
     covariance_matrix = [[moment_matrix[0][2], moment_matrix[1][1]], [moment_matrix[1][1], moment_matrix[2][0]]]
     covariance_matrix /= (zeroth_moment)
     # the volume under multivariate is 10,000. Thus, we have to divide with 10000 to get a right value
-    covariance_matrix /= 10000
-    flux = zeroth_moment / 10000
+    covariance_matrix /= area_multivariate
+    flux = zeroth_moment / area_multivariate
     return flux, first_moment_x, first_moment_y, covariance_matrix
 
 def null_deblend_plot(flux, first_moment_x, first_moment_y, covariance_matrix):
