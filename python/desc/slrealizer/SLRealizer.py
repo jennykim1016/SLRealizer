@@ -8,7 +8,7 @@ import matplotlib
 import math
 import skimage
 import random
-import om10
+#import om10
 
 #=====================================================
 

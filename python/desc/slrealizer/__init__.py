@@ -4,4 +4,4 @@ from distance import *
 from constant import *
 from null_deblend import *
 from catalog import *
-from test import *
+from SLRealizer_test import *
