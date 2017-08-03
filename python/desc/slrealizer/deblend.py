@@ -26,10 +26,10 @@ from skimage.measure import moments
 # ======================================================================
 
 #global variable that controls the size of the plot#
-x_min = -5.0
-x_max = 5.0
-y_min = -5.0
-y_max = 5.0
+x_min = 0.0
+x_max = 10.0
+y_min = 0.0
+y_max = 10.0
 distance = 0.01
 
 number_of_rows = int((x_max - x_min)/distance)
