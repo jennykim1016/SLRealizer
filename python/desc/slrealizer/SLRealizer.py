@@ -1,145 +1,170 @@
+#=====================================================
+import numpy as np
 import desc.slrealizer
 import pandas as pd
 import matplotlib.pyplot as plt
 import pylab
 import matplotlib
 import math
+import skimage
+import random
+import om10
+import pandas
+import corner
+#from corner import corner
+#=====================================================
 
 class SLRealizer(object):
 
-    scale_factor = 2
-
-    # Maybe make a separate method for it
-    # Best OOP practice?
+    """
+    Contains the constructor and the key methods for SLRealizer module.
+    Constructor reads in an OM10 catalog and observation history.
+    Generates the toy catalog, plots the lensed system, and deblends sources using OM10 catalog and observation history.
+    """
 
     def __init__(self, catalog=None, observation="../../data/twinkles_observation_history.csv"):
         """
-            Reads in a lens sample catalog and observation data.
-            We assume lenses are OM10 lenses and observation file is .csv file
+        Reads in a lens sample catalog and observation data.
+        We assume lenses are OM10 lenses and observation file is .csv file
         """
         self.catalog = catalog
         self.observation = pd.read_csv(observation,index_col=0).as_matrix()
+        print(type(self.observation))
+        print(self.observation)
 
-    # def plot_lens_random_date(self, lensID = 7176527, convolve=False):
-    #     plotting.plot_lens_random_date(self, lensID, convolve)
+    def plot_lens_random_date(self, lensID=None, debug=False, convolve=False):
+        """
+        Given a specific lens, this code plots a lens after choosing a random observation epoch.
+        """
 
-    def plot_lens_random_date(self, lensID=None, convolve=False):
         if lensID is None:
             print 'No lens system selected for plotting.'
             return
-        import random
-        # Keep randomly selecting epochs until we get one that is not
-        # in the 'y' filter:
+        # Keep randomly selecting epochs until we get one that is not in the 'y' filter:
         filter = 'y'
         while filter == 'y':
             randomIndex = random.randint(0, 200)
             filter = self.observation[randomIndex][1]
-        # Now visualize the lens system at the epoch defined by the
-        # randomIndex:
+        # Now visualize the lens system at the epoch defined by the randomIndex:
         desc.slrealizer.draw_model(self.observation[randomIndex],
                                    self.catalog.get_lens(lensID),
-                                   convolve)
+                                   convolve, debug)
         return
 
-    def deblend(self, lensID=None):
+    def make_catalog(self, num_system = 3, save = True):
+        """
+        Selects the lensed system just as the real LSST will do, and generates a toy catalog
+
+        Parameters
+        ----------
+        num_system: int
+        Number of systems that the user will request
+
+        save: bool
+        If true, the catalog will be saved in the data folder.
+        """
+
+        print('From the OM10 catalog, I am selecting LSST lenses')
+        self.catalog.select_random(maglim=23.3,area=20000.0,IQ=0.75)
+        df = pd.DataFrame(columns=['MJD', 'filter', 'RA', 'RA_err', 'DEC', 'DEC_err', 'x', 'x_com_err', 'y', 'y_com_err', 'flux', 'flux_err', 'qxx', 'qxx_err', 'qyy', 'qyy_err', 'qxy', 'qxy_err', 'psf_sigma', 'sky', 'lensid'])
+        for i in xrange(num_system):
+            randomIndex = random.randint(0, len(self.catalog.sample))
+            lensID = self.catalog.sample[randomIndex]['LENSID']
+            filter = 'y'
+            #  Keep randomly selecting epochs until we get one that is not in the 'y' filter:
+            while filter == 'y':
+                randomIndex = random.randint(0, 200)
+                filter = self.observation[randomIndex][1]
+            data = desc.slrealizer.generate_data(self.catalog.get_lens(lensID), self.observation[randomIndex])
+            df.loc[len(df)]= data
+        if save:
+            print('saving the table with the name catalog.csv. Check your data folder (../../../data/)')
+            df.to_csv('../../../data/catalog.csv', index=False)
+
+    def deblend(self, lensID=None, null_deblend=True):
+        """
+        Given a lens system, this method deblends the source and plots the process of deblending.
+
+        Parameters
+        ---------
+        lensID : int
+        OM10 lens ID which can be used to identify the lensed system
+        
+        null_deblend : bool
+        If true, assumes null deblender. Working deblender is currently not being supported
+        """
+
         if lensID is None:
-            print 'No lens system selected for plotting.'
+            print('No lens system selected for calculating the statistics')
             return
-        import random
-        # Keep randomly selecting epochs until we get one that is not           
-        # in the 'y' filter:                                                    
+        if null_deblend is False:
+            print('Sorry, working deblender is not being supported.')
+            return
+        # Keep randomly selecting epochs until we get one that is not in the 'y' filter:
         filter = 'y'
         while filter == 'y':
             randomIndex = random.randint(0, 200)
             filter = self.observation[randomIndex][1]
-        # Now visualize the lens system at the epoch defined by the             
-        # randomIndex:                                                          
-        desc.slrealizer.deblend(self.observation[randomIndex],
-                                   self.catalog.get_lens(lensID))
-        return
+        image2 = desc.slrealizer.plot_all_objects(self.observation[randomIndex], self.catalog.get_lens(lensID))
+        print('##################### PLOTTING ALL SOURCES ##################################')
+        desc.slrealizer.show_color_map(image2)
+        flux, first_moment_x, first_moment_y, covariance_matrix = desc.slrealizer.null_deblend(image2)
+        image = desc.slrealizer.null_deblend_plot(flux, first_moment_x, first_moment_y, covariance_matrix)
+        print('##################### AFTER NULL DEBLENDING ##################################')
+        desc.slrealizer.show_color_map(image)
 
-"""
-    def determineAlpha(self, mag_ratio):
-        if(mag_ratio>1):
-            quasar_alpha = 1/mag_ratio
-            lens_alpha = 1
-        else:
-            quasar_alpha = 1
-            lens_alpha = mag_ratio
-        return quasar_alpha, lens_alpha
-
-    def determineScale(self, lensX, sourceX, lensY, sourceY):
-        if (abs(lensX[0]+sourceX))>(abs(sourceX)):
-            plotX = abs(lensX[0]+sourceX)
-        else:
-            plotX = abs(sourceX)
-        if (abs(lensY[0]+sourceY))>(abs(sourceY)):
-            plotY = abs(lensY[0]+sourceY)
-        else:
-            plotY = abs(sourceY)
-        return plotX, plotY
-
-    def plotFigureOnMatplotlib(self, currObs, convolve, quasar_alpha, lens_alpha, sourceX, sourceY, lensX, lensY, plotX, plotY):
-        fig = plt.figure(figsize=(4, 16))
-        scale_factor = 2
-        for i in range(4):
-            if(currObs[1]=='g'):
-                circleColor = 'g'
-            else:
-                circleColor = 'r'
-            plotNumStr = "4"+"1"+str(i+1)
-            plotNum = int(plotNumStr)
-            fig.subplots_adjust(top=1.5)
-            sub = fig.add_subplot(plotNum)
-            #sub.set_ylim(-plotY-2*currObs[2]/scale_factor, plotY+2*currObs[2]/scale_factor)
-            sub.set_ylim(-3, 3)
-            #sub.set_xlim(-plotX-2*currObs[2]/scale_factor, plotX+2*currObs[2]/scale_factor)
-            sub.set_xlim(-3, 3)
-            sub.set_xlabel('xPosition')
-            sub.set_ylabel('yPosition')
-            source = plt.Circle((sourceX, sourceY), radius=currObs[2]/scale_factor, alpha=quasar_alpha, fc=circleColor, linewidth=0)
-            if(convolve):
-                # For now, we just let lensFWHM to be zero.
-                #lensFWHM = currLens['REFF']
-                lensFWHM = 0.0
-                lens = plt.Circle((lensX[i]+sourceX, lensY[i]+sourceY), radius=convolve(currObs[2], lensFWHM)/scale_factor, alpha=lens_alpha, fc=circleColor, linewidth=0)
-            else:
-                lens = plt.Circle((lensX[i]+sourceX, lensY[i]+sourceY), radius=currObs[2]/scale_factor, alpha=lens_alpha, fc=circleColor, linewidth=0)
-            fig.gca().add_patch(lens)
-            fig.gca().add_patch(source)
-            sub.set_title('Observation ' + str(i+1) + ' with ' + 'filter ' + currObs[1] + ' on MJD ' + str(currObs[0]))
-            #seeing = plt.Circle(((-plotY-2*currObs[2])/scale_factor, (plotX-2*currObs[2])/scale_factor), radius=currObs[2]/scale_factor, alpha=0.1, fc='k')
-            seeing = plt.Circle((-2.5, -2.5), radius=currObs[2]/scale_factor, alpha=0.1, fc='k')
-            sub.legend((source, seeing, lens),('source', 'seeing', 'lens'))
-            plt.gca().add_patch(seeing)
+    def generate_cornerplot(self):
+        df_g = pandas.read_csv('../../../data/catalog_g.csv')
+        qxx_g = df_g['qxx'].as_matrix()
+        df_z = pandas.read_csv('../../../data/catalog_z.csv')
+        qxx_z = df_z['qxx'].as_matrix()
+        df_r = pandas.read_csv('../../../data/catalog_r.csv')
+        qxx_r = df_r['qxx'].as_matrix()
+        df_u = pandas.read_csv('../../../data/catalog_u.csv')
+        qxx_u = df_u['qxx'].as_matrix()
+        df_i = pandas.read_csv('../../../data/catalog_i.csv')
+        qxx_i = df_i['qxx'].as_matrix()
+        names = ('qxx_g', 'qxx_z', 'qxx_r', 'qxx_u', 'qxx_i')
+        features = np.array([qxx_g, qxx_z, qxx_r, qxx_u, qxx_i])
+        label = []
+        for name in names:
+            label.append(axis_labels[name])
+        n = len(df_g)
+        p = len(names)
+        #reload(corner)
+        #features=features.reshape(p, n).transpose()
+        #corner.corner()
+        fig = corner.corner(features.reshape(p, n).transpose(), labels=label, color='black', smooth=1.0)
+        return fig
 
 
-    def drawPlot(self, currObs, lensID = 7176527, convolve = False):
-        currLens = self.lens.get_lens(lensID)
-        #obsHist has MJD Filter FWHM 5sigmag
-        filterQuasar = currObs[1] + '_SDSS_quasar'
-        filterLens = currObs[1] + '_SDSS_lens'
-        lens_mag = currLens[filterLens]
-        quasar_mag = currLens[filterQuasar]
-        mag_ratio = math.pow(2.5, -lens_mag+quasar_mag)
-        quasar_alpha, lens_alpha = self.determineAlpha(mag_ratio)
-        sourceX = currLens['XSRC'][0]
-        sourceY = currLens['YSRC'][0]
-        lensX = currLens['XIMG'][0]
-        lensY = currLens['YIMG'][0]
-        plotX, plotY = self.determineScale(lensX, sourceX, lensY, sourceY)
-        self.plotFigureOnMatplotlib(currObs, convolve, quasar_alpha, lens_alpha, sourceX, sourceY, lensX, lensY, plotX, plotY)
+    def make_catalog(self, observation):
+        """
+        Generates a full catalog(for each filter) of 200 lensed system and save it 
+        """
+        print('From the OM10 catalog, I am selecting LSST lenses')
+        self.catalog.select_random(maglim=23.3,area=20000.0,IQ=0.75)
+        df_g = pd.DataFrame(columns=['MJD', 'filter', 'RA', 'RA_err', 'DEC', 'DEC_err', 'x', 'x_com_err', 'y', 'y_com_err', 'flux', 'flux_err', 'qxx', 'qxx_err', 'qyy', 'qyy_err', 'qxy', 'qxy_err', 'psf_sigma', 'sky', 'lensid'])
+        df_z = pd.DataFrame(columns=['MJD', 'filter', 'RA', 'RA_err', 'DEC', 'DEC_err', 'x', 'x_com_err', 'y', 'y_com_err', 'flux', 'flux_err', 'qxx', 'qxx_err', 'qyy', 'qyy_err', 'qxy', 'qxy_err', 'psf_sigma', 'sky', 'lensid'])
+        df_r = pd.DataFrame(columns=['MJD', 'filter', 'RA', 'RA_err', 'DEC', 'DEC_err', 'x', 'x_com_err', 'y', 'y_com_err', 'flux', 'flux_err', 'qxx', 'qxx_err', 'qyy', 'qyy_err', 'qxy', 'qxy_err', 'psf_sigma', 'sky', 'lensid'])
+        df_u = pd.DataFrame(columns=['MJD', 'filter', 'RA', 'RA_err', 'DEC', 'DEC_err', 'x', 'x_com_err', 'y', 'y_com_err', 'flux', 'flux_err', 'qxx', 'qxx_err', 'qyy', 'qyy_err', 'qxy', 'qxy_err', 'psf_sigma', 'sky', 'lensid'])
+        df_i = pd.DataFrame(columns=['MJD', 'filter', 'RA', 'RA_err', 'DEC', 'DEC_err', 'x', 'x_com_err', 'y', 'y_com_err', 'flux', 'flux_err', 'qxx', 'qxx_err', 'qyy', 'qyy_err', 'qxy', 'qxy_err', 'psf_sigma', 'sky', 'lensid'])
+        total_df = [df_g, df_z, df_r, df_u, df_i]
+#        print total_df
+        # choose five different epochs
+        # print(len(self.catalog.sample))
+        for i in xrange(200): # we will use first 200
+            for (currObs, df) in zip(observation, total_df):
+                data = desc.slrealizer.generate_data(self.catalog.get_lens(self.catalog.sample[i]['LENSID']), currObs)
+                df.loc[len(df)]= data
+        for (df, filter) in zip(total_df, ['g', 'z', 'r', 'u', 'i']):
+            df.to_csv('../../../data/catalog_'+filter+'.csv', index=False)        
 
-    def convolve(obsFWHM, initialFWHM = 0.0):
-        seeing = obsFWHM
-        seeingsigma = seeingToSig(seeing)
-        initSigma = seeingToSig(initialFWHM)
-        convolveSigma = seeingsigma + initSigma
-        return convolveSigma
+# ======================================================================
 
-    def seeingToSig(self, seeing):
-        return seeing / np.sqrt(8 * np.log(2))
-
-    def sigmaTofwhm(self, sigma):
-        return sigma * np.sqrt(8 * np.log(2))
-"""
+axis_labels = {}
+axis_labels['qxx_g'] = '$qxx_g$'
+axis_labels['qxx_z'] = '$qxx_z$'
+axis_labels['qxx_r'] = '$qxx_r$'
+axis_labels['qxx_u'] = '$qxx_u$'
+axis_labels['qxx_i'] = '$qxx_i$'
