@@ -71,7 +71,11 @@ def plot_all_objects(currObs, currLens):
     image = image + rv.pdf(pos)*math.pow(2.5, desc.slrealizer.return_zeropoint() - currLens[filterLens])
     # iterate for the lens
     for i in xrange(currLens['NIMG']):
-        mag_ratio = math.pow(2.5, desc.slrealizer.return_zeropoint() -currLens['MAG'][0][i])
+        # calculate the real magnitude of the images from source
+        # this was originally a bug
+        filter_quasar = currObs[1]+'_SDSS_quasar'
+        curr_lens_mag = 2.5*math.log(abs(currLens['MAG'][0][i]), 10) + currLens[filter_quasar] # sometimes magnitude gets negative value (inverted image)
+        mag_ratio = math.pow(2.5, desc.slrealizer.return_zeropoint()-curr_lens_mag)
         rv = scipy.stats.multivariate_normal([currLens['XIMG'][0][i],currLens['YIMG'][0][i]], [[PSF_sigma*PSF_sigma, 0], [0, PSF_sigma*PSF_sigma]], allow_singular=True)
         image = image + rv.pdf(pos)*mag_ratio #scale
     return image
