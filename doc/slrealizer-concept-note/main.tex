@@ -328,16 +328,10 @@ differences in the ellipticities, rotation angles, fluxes, and sizes.
 Where we needed a reference frame, we use the \Object properties in the
 $r$-band.
 
-We can derive the same features from the catalog of SDSS galaxies: we
-approximate the magnitude system in SDSS to be the same in LSST, and the
-units are scaled to be the same. The main difference is in the sizes.
-SDSS's definition of size was $I_{xx}$ + $I_{yy}$. \GalSim calculates
-the size of a system by calculating the determinant of the second moment
-($M=I_{xx}I_{yy}-I_{xy}I_{xy}$) and applying the fourth root on it
-($\sqrt[4]{M}$). \FIXME{In order to solve the problem by scaling the SDSS
-sizes, we multiplied the power of pixel-to-arcsec ratio to change the
-unit to arcseconds, multiplied two to convert the half size to the full
-size, and applied the square root to the value to get a right dimension.}\footnote{This text needs clarifying. Which quantity in the  LSST \Object table is being used? Which quantity in the SDSS catalog is being used? Why does the conversion from one to another involve a factor of 2?}
+We selected the same features from the SDSS galaxy catalog. We started from the assumption that the magnitude system and the unit system of SDSS is exactly the same as those of LSST’s. However, we realized that SDSS calculates sizes differently than Galsim. SDSS calculates the sizes by using $I_{xx}$ + $I_{yy}$. \GalSim calculates
+the size of a system by calculating the determinant of the second moment($M=I_{xx}I_{yy}-I_{xy}I_{xy}$). The second moments were provided by LSST \Object table.
+
+In order to solve this problem, we recalculated the size of the SDSS objects. First, because SDSS has a unit of pixel whereas LSST has a unit of arcseconds, we changed the sizes from pixel squared to arcsecond square. Then, we applied the square root to SDSS sizes to match the dimension with LSST objects. We also multiplied two afterwards in order to calculate the half width second moment to the full width second moment.
 
 From this initial feature set, we computed various additional features,
 and  plotted them for our SDSS galaxies and OM10 lensed systems, and
